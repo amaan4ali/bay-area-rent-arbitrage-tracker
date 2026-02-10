@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rent-arbitrage-tracker"
+version = "0.1.0"
+description = "Bay Area Rent Arbitrage Tracker — find underpriced rentals using statistical analysis"
+requires-python = ">=3.11"
+dependencies = [
+    "sqlalchemy>=2.0,<3.0",
+    "psycopg2-binary>=2.9,<3.0",
+    "alembic>=1.13,<2.0",
+    "beautifulsoup4>=4.12,<5.0",
+    "requests>=2.31,<3.0",
+    "lxml>=5.0,<6.0",
+    "pyspark>=3.5,<4.0",
+    "plotly>=5.18,<6.0",
+    "dash>=2.14,<3.0",
+    "dash-bootstrap-components>=1.5,<2.0",
+    "boto3>=1.34,<2.0",
+    "python-dotenv>=1.0,<2.0",
+    "click>=8.1,<9.0",
+    "fake-useragent>=1.4,<2.0",
+    "tenacity>=8.2,<9.0",
+    "pandas>=2.1,<3.0",
+    "numpy>=1.26,<2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4,<9.0",
+    "pytest-cov>=4.1,<6.0",
+    "ruff>=0.3,<1.0",
+    "mypy>=1.8,<2.0",
+]
+
+[project.scripts]
+scraper = "scraper.run:main"
+
+[tool.setuptools.packages.find]
+include = ["scraper*", "pipeline*", "dashboard*", "infra*", "db*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CDK
+cdk.out/
+
+# Spark
+metastore_db/
+derby.log
+spark-warehouse/
+
+# Test / coverage
+.pytest_cache/
+htmlcov/
+.coverage
