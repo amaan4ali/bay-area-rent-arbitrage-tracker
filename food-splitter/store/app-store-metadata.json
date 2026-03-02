@@ -1,0 +1,56 @@
+{
+  "appName": "FoodSplitter - Split Bills Instantly",
+  "subtitle": "Scan, split, and pay — no more IOUs",
+  "category": "Finance",
+  "secondaryCategory": "Food & Drink",
+  "contentRating": "4+",
+  "pricing": "Free",
+
+  "description": "FoodSplitter makes splitting restaurant bills dead simple. No more awkward math, no more Venmo requests weeks later, no more \"I'll get you next time.\"\n\nHOW IT WORKS:\n1. One person pays the bill at the restaurant\n2. Open FoodSplitter and snap a photo of the receipt\n3. Our scanner automatically reads every item\n4. Tap each item to assign who ordered it\n5. Tax and tip are split proportionally — fair and accurate\n6. Everyone gets a notification and pays their share instantly\n\nFAIR SPLITTING:\n• Each person pays for exactly what they ordered\n• Shared items (appetizers, pitchers) are split among those who shared\n• Tax is proportional to your food total — not a flat split\n• Tip is proportional too — no one overpays\n\nINSTANT PAYMENTS:\n• Link your bank account or card once\n• Pay your share with one tap\n• Money goes directly to whoever paid the bill\n• Everyone sees real-time payment status\n\nSMART FEATURES:\n• Receipt scanner with OCR — no manual entry needed\n• Real-time updates — everyone sees the split live\n• Push notifications for payment requests\n• Full history of past meals and payments\n• Works with any group size\n\nPERFECT FOR:\n• Friend groups who eat out together\n• Roommates splitting groceries\n• Work lunches and team dinners\n• Date nights where you split the check\n• Large group dinners and celebrations\n\nPayments are processed securely through Stripe. We never store your card details.",
+
+  "keywords": "split bill, bill splitter, restaurant bill, split check, food cost, group payment, venmo alternative, receipt scanner, tip calculator, split tab, dinner split, fair split, OCR receipt, group dining, expense split",
+
+  "promotionalText": "Split any bill in seconds. Scan the receipt, assign items, everyone pays their fair share instantly.",
+
+  "supportUrl": "https://foodsplitter.app/support",
+  "marketingUrl": "https://foodsplitter.app",
+  "privacyPolicyUrl": "https://foodsplitter.app/privacy",
+
+  "whatsNew": "Initial release! Scan receipts, split bills proportionally, and pay your friends instantly.",
+
+  "screenshots": {
+    "description": "Required sizes: iPhone 6.7\" (1290x2796), iPhone 6.5\" (1284x2778), iPad 12.9\" (2048x2732)",
+    "screens": [
+      {
+        "name": "01-home",
+        "caption": "See all your active splits at a glance"
+      },
+      {
+        "name": "02-scan",
+        "caption": "Snap a photo — we read the receipt for you"
+      },
+      {
+        "name": "03-assign",
+        "caption": "Tap items to assign who ordered what"
+      },
+      {
+        "name": "04-split",
+        "caption": "Fair split: tax and tip proportional to your order"
+      },
+      {
+        "name": "05-pay",
+        "caption": "One tap to pay your share instantly"
+      },
+      {
+        "name": "06-settled",
+        "caption": "Everyone paid — all settled!"
+      }
+    ]
+  },
+
+  "appReview": {
+    "notes": "To test the app, create an account with any phone number. For payment testing, use Stripe test card 4242 4242 4242 4242 with any future expiry and any CVC. Create a second account to test the split flow between two users.",
+    "demoAccountPhone": "+15551234567",
+    "demoVerificationCode": "123456"
+  }
+}

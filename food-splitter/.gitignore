@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+functions/node_modules/
+functions/lib/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Env
+.env
+.env.local
+
+# Secrets (NEVER commit these)
+google-services.json
+GoogleService-Info.plist
+google-service-account.json
+*.keystore
+*.jks
+*.p12
+*.key
+*.mobileprovision
+*.provisionprofile
+
+# Build artifacts
+*.ipa
+*.apk
+*.aab
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+coverage/

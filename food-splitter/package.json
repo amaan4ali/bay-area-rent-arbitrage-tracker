@@ -8,7 +8,15 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint . --ext .ts,.tsx",
+    "icons": "node scripts/generate-icons.js",
+    "setup": "bash scripts/setup-app-store.sh",
+    "build:ios": "eas build --platform ios --profile production",
+    "build:android": "eas build --platform android --profile production",
+    "submit:ios": "eas submit --platform ios --profile production",
+    "submit:android": "eas submit --platform android --profile production",
+    "deploy:functions": "cd functions && npm run build && firebase deploy --only functions",
+    "ship": "bash scripts/build-and-submit.sh ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",

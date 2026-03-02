@@ -7,6 +7,13 @@
     "icon": "./assets/icon.png",
     "scheme": "foodsplitter",
     "userInterfaceStyle": "automatic",
+    "owner": "YOUR_EXPO_USERNAME",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/YOUR_PROJECT_ID"
+    },
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -16,8 +23,28 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.foodsplitter.app",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "We need camera access to scan receipts"
+        "NSCameraUsageDescription": "FoodSplitter needs camera access to scan your receipts and automatically extract bill items.",
+        "NSPhotoLibraryUsageDescription": "FoodSplitter needs photo library access to select receipt images for scanning.",
+        "NSContactsUsageDescription": "FoodSplitter needs contacts access to easily find and add friends to split bills with.",
+        "NSFaceIDUsageDescription": "FoodSplitter uses Face ID to securely authorize payments.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "associatedDomains": ["applinks:foodsplitter.app"],
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "aps-environment": "production"
       }
     },
     "android": {
@@ -26,7 +53,14 @@
         "backgroundColor": "#1a1a2e"
       },
       "package": "com.foodsplitter.app",
-      "permissions": ["CAMERA"]
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "READ_CONTACTS",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "expo-router",
@@ -35,10 +69,29 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#e94560"
+          "color": "#e94560",
+          "sounds": ["./assets/notification-sound.wav"]
         }
       ],
-      "@stripe/stripe-react-native"
-    ]
+      "@stripe/stripe-react-native",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "FoodSplitter needs access to your contacts to find friends to split bills with."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "FoodSplitter needs access to your photos to select receipt images.",
+          "cameraPermission": "FoodSplitter needs access to your camera to scan receipts."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    }
   }
 }
