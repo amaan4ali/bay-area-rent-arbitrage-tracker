@@ -8,13 +8,36 @@
  * 4. Returns structured data that populates the bill form
  */
 
+import { DEMO_MODE } from "../config";
 import { OCRResult } from "../types";
 
 const VISION_API_URL = "https://vision.googleapis.com/v1/images:annotate";
 const API_KEY = process.env.GOOGLE_CLOUD_VISION_API_KEY;
 
+// ─── Demo OCR result ────────────────────────────────────
+const DEMO_OCR_RESULT: OCRResult = {
+  items: [
+    { name: "Avocado Toast", price: 16.00 },
+    { name: "Eggs Benedict", price: 19.00 },
+    { name: "Latte", price: 6.50 },
+    { name: "Orange Juice", price: 5.00 },
+    { name: "Pancake Stack", price: 14.00 },
+  ],
+  subtotal: 60.50,
+  tax: 5.29,
+  tip: 12.10,
+  total: 77.89,
+  confidence: 0.92,
+};
+
 // ─── Scan Receipt Image ─────────────────────────────────
 export async function scanReceipt(imageBase64: string): Promise<OCRResult> {
+  if (DEMO_MODE) {
+    // Simulate a short delay like real OCR would take
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return DEMO_OCR_RESULT;
+  }
+
   const response = await fetch(`${VISION_API_URL}?key=${API_KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -47,7 +70,6 @@ export function parseReceiptText(rawText: string): OCRResult {
   let tip: number | undefined;
   let total: number | undefined;
 
-  // Price pattern: matches $12.99, 12.99, $ 12.99
   const pricePattern = /\$?\s?(\d+\.\d{2})/;
 
   for (const line of lines) {
@@ -58,7 +80,6 @@ export function parseReceiptText(rawText: string): OCRResult {
 
     const price = parseFloat(priceMatch[1]);
 
-    // Categorize line
     if (lower.includes("subtotal") || lower.includes("sub total") || lower.includes("sub-total")) {
       subtotal = price;
     } else if (lower.includes("tax")) {
@@ -68,7 +89,6 @@ export function parseReceiptText(rawText: string): OCRResult {
     } else if (lower.includes("total") || lower.includes("amount due") || lower.includes("balance")) {
       total = price;
     } else {
-      // It's a menu item — extract name (everything before the price)
       const name = line.replace(pricePattern, "").replace(/\$/, "").trim();
       if (name.length > 1 && price > 0 && price < 500) {
         items.push({ name, price });
@@ -76,7 +96,6 @@ export function parseReceiptText(rawText: string): OCRResult {
     }
   }
 
-  // Confidence scoring based on what we found
   let confidence = 0;
   if (items.length > 0) confidence += 0.4;
   if (subtotal !== undefined) confidence += 0.2;
@@ -87,18 +106,14 @@ export function parseReceiptText(rawText: string): OCRResult {
   return { items, subtotal, tax, tip, total, confidence };
 }
 
-// ─── Convert image URI to base64 ────────────────────────
+// ─── Convert image URI to base64 (React Native compatible) ──
 export async function imageUriToBase64(uri: string): Promise<string> {
-  const response = await fetch(uri);
-  const blob = await response.blob();
+  if (DEMO_MODE) return "demo-base64-data";
 
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = (reader.result as string).split(",")[1];
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
+  // Use expo-file-system for React Native base64 conversion
+  const FileSystem = await import("expo-file-system");
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
   });
+  return base64;
 }

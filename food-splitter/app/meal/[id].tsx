@@ -14,6 +14,8 @@ import { useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../src/hooks/useAuth";
 import { useMeal } from "../../src/hooks/useMeal";
 import { usePayment } from "../../src/hooks/usePayment";
+import { getDisplayName } from "../../src/utils/names";
+import { DEMO_MODE } from "../../src/config";
 import { BillItem } from "../../src/types";
 
 export default function MealDetailScreen() {
@@ -30,7 +32,6 @@ export default function MealDetailScreen() {
   const [tipInput, setTipInput] = useState("");
   const [assigningItemId, setAssigningItemId] = useState<string | null>(null);
 
-  // Add a new item to the bill
   const addItem = () => {
     if (!newItemName.trim() || !newItemPrice) return;
     const item: BillItem = {
@@ -38,14 +39,13 @@ export default function MealDetailScreen() {
       name: newItemName.trim(),
       price: parseFloat(newItemPrice),
       quantity: 1,
-      assignedTo: [], // Will be assigned to people next
+      assignedTo: [],
     };
     setItems([...items, item]);
     setNewItemName("");
     setNewItemPrice("");
   };
 
-  // Assign/unassign a person to an item
   const toggleAssignment = (itemId: string, userId: string) => {
     setItems(
       items.map((item) => {
@@ -61,23 +61,26 @@ export default function MealDetailScreen() {
     );
   };
 
-  // Remove an item
   const removeItem = (itemId: string) => {
     setItems(items.filter((i) => i.id !== itemId));
   };
 
-  // Finalize the split calculation
   const handleFinalize = async () => {
     const tax = parseFloat(taxInput) || 0;
     const tip = parseFloat(tipInput) || 0;
     await finalizeSplits(items, tax, tip);
   };
 
-  // Pay your share
   const handlePay = async () => {
     if (!meal || !user) return;
     const mySplit = meal.splits.find((s) => s.userId === user.id);
     if (!mySplit || mySplit.isPayer) return;
+
+    if (DEMO_MODE) {
+      // In demo mode, simulate instant payment
+      await markSplitPaid(user.id, "demo-payment");
+      return;
+    }
 
     const success = await pay(meal.id, user.id, meal.payerId, mySplit.totalOwed);
     if (success) {
@@ -118,28 +121,22 @@ export default function MealDetailScreen() {
       {/* ─── DRAFT MODE: Add items & assign ─────────── */}
       {isDraft && (
         <>
-          {/* Add items */}
           <Card style={styles.card}>
             <Card.Content>
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 Add Items
               </Text>
 
-              {/* Existing items */}
               {items.map((item) => (
                 <View key={item.id} style={styles.itemRow}>
                   <Pressable
                     style={styles.itemInfo}
                     onPress={() =>
-                      setAssigningItemId(
-                        assigningItemId === item.id ? null : item.id
-                      )
+                      setAssigningItemId(assigningItemId === item.id ? null : item.id)
                     }
                   >
                     <Text style={styles.itemName}>{item.name}</Text>
-                    <Text style={styles.itemPrice}>
-                      ${item.price.toFixed(2)}
-                    </Text>
+                    <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
                   </Pressable>
                   <IconButton
                     icon="close"
@@ -148,7 +145,6 @@ export default function MealDetailScreen() {
                     onPress={() => removeItem(item.id)}
                   />
 
-                  {/* Assignment chips (shown when tapped) */}
                   {assigningItemId === item.id && (
                     <View style={styles.assignRow}>
                       <Text style={styles.assignLabel}>Who ordered this?</Text>
@@ -164,7 +160,7 @@ export default function MealDetailScreen() {
                             ]}
                             textStyle={{ color: "#fff", fontSize: 12 }}
                           >
-                            {pId === user?.id ? "You" : pId}
+                            {getDisplayName(pId, user?.id)}
                           </Chip>
                         ))}
                       </View>
@@ -173,7 +169,6 @@ export default function MealDetailScreen() {
                 </View>
               ))}
 
-              {/* New item input */}
               <View style={styles.addItemRow}>
                 <TextInput
                   mode="outlined"
@@ -204,7 +199,6 @@ export default function MealDetailScreen() {
             </Card.Content>
           </Card>
 
-          {/* Tax & Tip */}
           <Card style={styles.card}>
             <Card.Content>
               <Text variant="titleMedium" style={styles.sectionTitle}>
@@ -233,7 +227,6 @@ export default function MealDetailScreen() {
             </Card.Content>
           </Card>
 
-          {/* Calculate button */}
           <Button
             mode="contained"
             onPress={handleFinalize}
@@ -255,13 +248,14 @@ export default function MealDetailScreen() {
 
             {meal.splits.map((split) => {
               const isMe = split.userId === user?.id;
+              const name = getDisplayName(split.userId, user?.id);
               return (
                 <View key={split.userId}>
                   <View style={styles.splitRow}>
-                    <View>
+                    <View style={{ flex: 1 }}>
                       <Text style={[styles.splitName, isMe && styles.splitNameMe]}>
-                        {isMe ? "You" : split.userId}
-                        {split.isPayer ? " (paid)" : ""}
+                        {name}
+                        {split.isPayer ? " (paid the bill)" : ""}
                       </Text>
                       <Text style={styles.splitBreakdown}>
                         Food: ${split.itemsSubtotal.toFixed(2)} + Tax: $
@@ -276,13 +270,11 @@ export default function MealDetailScreen() {
                         compact
                         style={{
                           backgroundColor:
-                            split.paymentStatus === "completed"
-                              ? "#66bb6a"
-                              : "#e94560",
+                            split.paymentStatus === "completed" ? "#66bb6a" : "#e94560",
                         }}
                         textStyle={{ color: "#fff", fontSize: 10 }}
                       >
-                        {split.paymentStatus}
+                        {split.paymentStatus === "completed" ? "paid" : "owes"}
                       </Chip>
                     </View>
                   </View>
@@ -291,22 +283,31 @@ export default function MealDetailScreen() {
               );
             })}
 
-            {/* Pay button (only for non-payers with pending status) */}
-            {mySplit &&
-              !mySplit.isPayer &&
-              mySplit.paymentStatus === "pending" && (
-                <Button
-                  mode="contained"
-                  onPress={handlePay}
-                  loading={paymentProcessing}
-                  style={styles.payButton}
-                >
-                  Pay ${mySplit.totalOwed.toFixed(2)}
-                </Button>
-              )}
+            {/* Total summary */}
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Bill Total</Text>
+              <Text style={styles.totalValue}>${meal.totalAmount.toFixed(2)}</Text>
+            </View>
+
+            {mySplit && !mySplit.isPayer && mySplit.paymentStatus === "pending" && (
+              <Button
+                mode="contained"
+                onPress={handlePay}
+                loading={paymentProcessing}
+                style={styles.payButton}
+              >
+                Pay ${mySplit.totalOwed.toFixed(2)}
+              </Button>
+            )}
 
             {mySplit?.paymentStatus === "completed" && !mySplit.isPayer && (
               <Text style={styles.paidText}>You've paid your share!</Text>
+            )}
+
+            {mySplit?.isPayer && (
+              <Text style={styles.payerText}>
+                You paid the bill. Waiting for {meal.splits.filter((s) => !s.isPayer && s.paymentStatus === "pending").length} people to pay you back.
+              </Text>
             )}
           </Card.Content>
         </Card>
@@ -316,12 +317,30 @@ export default function MealDetailScreen() {
       {meal.status === "settled" && (
         <Card style={styles.card}>
           <Card.Content style={styles.settledContent}>
-            <Text variant="headlineMedium" style={styles.settledText}>
+            <Text variant="headlineMedium" style={styles.settledEmoji}>
               All settled!
             </Text>
             <Text style={styles.settledSubtext}>
               Everyone has paid their share.
             </Text>
+
+            {/* Show final breakdown even in settled state */}
+            <Divider style={[styles.splitDivider, { marginVertical: 16 }]} />
+            {meal.splits.map((split) => (
+              <View key={split.userId} style={styles.settledRow}>
+                <Text style={styles.settledName}>
+                  {getDisplayName(split.userId, user?.id)}
+                </Text>
+                <Text style={styles.settledAmount}>${split.totalOwed.toFixed(2)}</Text>
+              </View>
+            ))}
+            <Divider style={[styles.splitDivider, { marginVertical: 8 }]} />
+            <View style={styles.settledRow}>
+              <Text style={[styles.settledName, { fontWeight: "bold" }]}>Total</Text>
+              <Text style={[styles.settledAmount, { color: "#e94560" }]}>
+                ${meal.totalAmount.toFixed(2)}
+              </Text>
+            </View>
           </Card.Content>
         </Card>
       )}
@@ -337,67 +356,38 @@ const styles = StyleSheet.create({
   participantCount: { color: "#888", marginBottom: 20 },
   card: { backgroundColor: "#16213e", borderRadius: 12, marginBottom: 16 },
   sectionTitle: { color: "#fff", marginBottom: 12 },
-  // Item rows
-  itemRow: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#0f3460",
-    paddingVertical: 8,
-  },
-  itemInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  itemRow: { borderBottomWidth: 1, borderBottomColor: "#0f3460", paddingVertical: 8 },
+  itemInfo: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   itemName: { color: "#ccc", flex: 1 },
   itemPrice: { color: "#fff", fontWeight: "600", marginRight: 8 },
-  // Assignment
   assignRow: { marginTop: 8, marginBottom: 4 },
   assignLabel: { color: "#888", fontSize: 12, marginBottom: 6 },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   assignChip: { backgroundColor: "#0f3460" },
   assignChipSelected: { backgroundColor: "#e94560" },
-  // Add item
-  addItemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 12,
-    gap: 8,
-  },
+  addItemRow: { flexDirection: "row", alignItems: "center", marginTop: 12, gap: 8 },
   itemInput: { flex: 2 },
   priceInput: { flex: 1 },
-  // Tax/tip
   taxTipRow: { flexDirection: "row", gap: 12 },
   halfInput: { flex: 1 },
-  calculateButton: {
-    backgroundColor: "#e94560",
-    paddingVertical: 4,
-    marginBottom: 16,
-  },
-  // Splits
-  splitRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-  },
+  calculateButton: { backgroundColor: "#e94560", paddingVertical: 4, marginBottom: 16 },
+  splitRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12 },
   splitName: { color: "#ccc", fontSize: 16 },
   splitNameMe: { color: "#e94560", fontWeight: "bold" },
   splitBreakdown: { color: "#666", fontSize: 12, marginTop: 2 },
   splitRight: { alignItems: "flex-end", gap: 4 },
   splitAmount: { color: "#fff", fontSize: 20, fontWeight: "bold" },
   splitDivider: { backgroundColor: "#0f3460" },
-  payButton: {
-    backgroundColor: "#e94560",
-    marginTop: 16,
-    paddingVertical: 4,
-  },
-  paidText: {
-    color: "#66bb6a",
-    textAlign: "center",
-    marginTop: 16,
-    fontSize: 16,
-  },
+  totalRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 12 },
+  totalLabel: { color: "#888", fontSize: 14 },
+  totalValue: { color: "#e94560", fontSize: 18, fontWeight: "bold" },
+  payButton: { backgroundColor: "#e94560", marginTop: 16, paddingVertical: 4 },
+  paidText: { color: "#66bb6a", textAlign: "center", marginTop: 16, fontSize: 16 },
+  payerText: { color: "#888", textAlign: "center", marginTop: 16, fontSize: 14 },
   settledContent: { alignItems: "center", padding: 24 },
-  settledText: { color: "#66bb6a" },
+  settledEmoji: { color: "#66bb6a" },
   settledSubtext: { color: "#888", marginTop: 8 },
+  settledRow: { flexDirection: "row", justifyContent: "space-between", width: "100%", paddingVertical: 6 },
+  settledName: { color: "#ccc", fontSize: 15 },
+  settledAmount: { color: "#fff", fontSize: 15, fontWeight: "600" },
 });

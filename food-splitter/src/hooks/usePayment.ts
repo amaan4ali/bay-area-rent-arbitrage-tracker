@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { payShare, createConnectedAccount, setupPaymentMethod } from "../services/stripe";
+import { DEMO_MODE } from "../config";
 import { createPaymentRecord, updatePaymentStatus } from "../services/firebase";
 
 export function usePayment() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Full payment flow: charge debtor → transfer to payer
   const pay = async (
     mealId: string,
     fromUserId: string,
@@ -17,7 +16,13 @@ export function usePayment() {
     setError(null);
 
     try {
-      // 1. Create payment record in Firestore
+      if (DEMO_MODE) {
+        // Simulate payment processing
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        setProcessing(false);
+        return true;
+      }
+
       const paymentId = await createPaymentRecord({
         mealId,
         fromUserId,
@@ -27,16 +32,15 @@ export function usePayment() {
         status: "processing",
       });
 
-      // 2. Process payment through Stripe
+      const { payShare } = await import("../services/stripe");
       const result = await payShare(mealId, fromUserId, toUserId, amount);
 
       if (result.success && result.paymentIntentId) {
-        // 3. Update payment record with Stripe ID
         await updatePaymentStatus(paymentId, "completed", new Date());
         return true;
       } else {
         await updatePaymentStatus(paymentId, "pending");
-        return false; // User cancelled
+        return false;
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Payment failed";
@@ -47,13 +51,15 @@ export function usePayment() {
     }
   };
 
-  // One-time: set up user's bank account to receive payments
   const onboardForPayments = async (userId: string): Promise<string> => {
+    if (DEMO_MODE) return "https://example.com/demo-onboarding";
+    const { createConnectedAccount } = await import("../services/stripe");
     return createConnectedAccount(userId);
   };
 
-  // One-time: link card to send payments
   const linkPaymentMethod = async (userId: string) => {
+    if (DEMO_MODE) return { setupIntentClientSecret: "", ephemeralKey: "", customerId: "" };
+    const { setupPaymentMethod } = await import("../services/stripe");
     return setupPaymentMethod(userId);
   };
 

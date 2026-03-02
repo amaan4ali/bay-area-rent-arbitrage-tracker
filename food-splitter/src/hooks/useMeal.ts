@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
+import { DEMO_MODE } from "../config";
+import { DEMO_MEALS } from "../demo-data";
 import {
   createMeal as createMealInDb,
-  getMeal,
   subscribToMeal,
   updateMealSplits,
   updateMealStatus,
   getUserMeals,
 } from "../services/firebase";
-import { calculateSplits, calculatePayments } from "../utils/splitCalculator";
-import { Meal, BillItem, Split, SplitCalculationInput } from "../types";
+import { calculateSplits } from "../utils/splitCalculator";
+import { Meal, BillItem, SplitCalculationInput } from "../types";
 
 // ─── Single meal (real-time) ────────────────────────────
 export function useMeal(mealId: string | null) {
@@ -21,7 +22,13 @@ export function useMeal(mealId: string | null) {
       return;
     }
 
-    // Real-time subscription — everyone sees updates live
+    if (DEMO_MODE) {
+      const found = DEMO_MEALS.find((m) => m.id === mealId) ?? null;
+      setMeal(found);
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = subscribToMeal(mealId, (updatedMeal) => {
       setMeal(updatedMeal);
       setLoading(false);
@@ -30,12 +37,7 @@ export function useMeal(mealId: string | null) {
     return unsubscribe;
   }, [mealId]);
 
-  // Calculate and save splits
-  const finalizeSplits = async (
-    items: BillItem[],
-    taxAmount: number,
-    tipAmount: number
-  ) => {
+  const finalizeSplits = async (items: BillItem[], taxAmount: number, tipAmount: number) => {
     if (!meal) return;
 
     const input: SplitCalculationInput = {
@@ -47,10 +49,16 @@ export function useMeal(mealId: string | null) {
     };
 
     const splits = calculateSplits(input);
+
+    if (DEMO_MODE) {
+      // Update local state directly in demo mode
+      setMeal({ ...meal, splits, status: "pending_payment" });
+      return;
+    }
+
     await updateMealSplits(meal.id, splits);
   };
 
-  // Mark a split as paid
   const markSplitPaid = async (userId: string, paymentId: string) => {
     if (!meal) return;
 
@@ -60,13 +68,15 @@ export function useMeal(mealId: string | null) {
         : s
     );
 
-    await updateMealSplits(meal.id, updatedSplits);
-
-    // Check if all splits are settled
     const allPaid = updatedSplits.every((s) => s.paymentStatus === "completed");
-    if (allPaid) {
-      await updateMealStatus(meal.id, "settled");
+
+    if (DEMO_MODE) {
+      setMeal({ ...meal, splits: updatedSplits, status: allPaid ? "settled" : meal.status });
+      return;
     }
+
+    await updateMealSplits(meal.id, updatedSplits);
+    if (allPaid) await updateMealStatus(meal.id, "settled");
   };
 
   return { meal, loading, finalizeSplits, markSplitPaid };
@@ -83,6 +93,12 @@ export function useUserMeals(userId: string | null) {
       return;
     }
 
+    if (DEMO_MODE) {
+      setMeals(DEMO_MEALS);
+      setLoading(false);
+      return;
+    }
+
     getUserMeals(userId).then((result) => {
       setMeals(result);
       setLoading(false);
@@ -91,6 +107,7 @@ export function useUserMeals(userId: string | null) {
 
   const refresh = async () => {
     if (!userId) return;
+    if (DEMO_MODE) return; // Demo data is static
     setLoading(true);
     const result = await getUserMeals(userId);
     setMeals(result);

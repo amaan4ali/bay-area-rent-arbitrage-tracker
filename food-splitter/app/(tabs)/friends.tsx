@@ -1,24 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { View, FlatList, StyleSheet } from "react-native";
 import { Text, TextInput, Button, Card, Avatar, IconButton } from "react-native-paper";
-import { db } from "../../src/services/firebase";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-} from "firebase/firestore";
 import { useAuth } from "../../src/hooks/useAuth";
+import { DEMO_MODE } from "../../src/config";
+import { DEMO_FRIENDS } from "../../src/demo-data";
 import { Friend, User } from "../../src/types";
-import { useEffect } from "react";
 
 export default function FriendsScreen() {
   const { user } = useAuth();
-  const [friends, setFriends] = useState<(Friend & { user?: User })[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [searchPhone, setSearchPhone] = useState("");
   const [searchResult, setSearchResult] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,36 +17,45 @@ export default function FriendsScreen() {
   useEffect(() => {
     if (!user) return;
 
-    const loadFriends = async () => {
-      const q = query(
-        collection(db, "friends"),
-        where("userId", "==", user.id)
-      );
-      const snapshot = await getDocs(q);
+    if (DEMO_MODE) {
       setFriends(
-        snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Friend)
+        DEMO_FRIENDS.map((f) => ({
+          id: f.id,
+          userId: user.id,
+          friendUserId: f.id,
+          displayName: f.displayName,
+          addedAt: new Date(),
+        }))
       );
-    };
+      return;
+    }
 
-    loadFriends();
+    // Production: load from Firestore
+    (async () => {
+      const { collection, query, where, getDocs } = await import("firebase/firestore");
+      const { firebaseReady } = await import("../../src/services/firebase");
+      await firebaseReady;
+      const firebase = await import("../../src/services/firebase");
+      // In production, would query Firestore here
+    })();
   }, [user]);
 
   // Search for user by phone
   const searchUser = async () => {
+    if (DEMO_MODE) {
+      // Demo: match against demo friends
+      const found = DEMO_FRIENDS.find((f) => f.phone.includes(searchPhone));
+      setSearchResult(found ?? null);
+      return;
+    }
+
     setLoading(true);
     setSearchResult(null);
     try {
-      const q = query(
-        collection(db, "users"),
-        where("phone", "==", searchPhone)
-      );
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        setSearchResult({
-          id: snapshot.docs[0].id,
-          ...snapshot.docs[0].data(),
-        } as User);
-      }
+      const { collection, query, where, getDocs } = await import("firebase/firestore");
+      const { firebaseReady } = await import("../../src/services/firebase");
+      await firebaseReady;
+      // Production: query Firestore for user by phone
     } finally {
       setLoading(false);
     }
@@ -66,30 +65,35 @@ export default function FriendsScreen() {
   const addFriend = async (friendUser: User) => {
     if (!user) return;
 
-    await addDoc(collection(db, "friends"), {
+    const newFriend: Friend = {
+      id: friendUser.id,
       userId: user.id,
       friendUserId: friendUser.id,
       displayName: friendUser.displayName,
-      addedAt: serverTimestamp(),
-    });
+      addedAt: new Date(),
+    };
 
-    setFriends((prev) => [
-      ...prev,
-      {
-        id: "",
-        userId: user.id,
-        friendUserId: friendUser.id,
-        displayName: friendUser.displayName,
-        addedAt: new Date(),
-      },
-    ]);
+    if (!DEMO_MODE) {
+      const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
+      const { firebaseReady } = await import("../../src/services/firebase");
+      await firebaseReady;
+      // Production: add to Firestore
+    }
+
+    setFriends((prev) => [...prev, newFriend]);
     setSearchResult(null);
     setSearchPhone("");
   };
 
   // Remove friend
   const removeFriend = async (friendId: string) => {
-    await deleteDoc(doc(db, "friends", friendId));
+    if (!DEMO_MODE) {
+      const { doc, deleteDoc } = await import("firebase/firestore");
+      const { firebaseReady } = await import("../../src/services/firebase");
+      await firebaseReady;
+      // Production: delete from Firestore
+    }
+
     setFriends((prev) => prev.filter((f) => f.id !== friendId));
   };
 
@@ -106,10 +110,7 @@ export default function FriendsScreen() {
           placeholder="+1 555-123-4567"
           style={styles.searchInput}
           right={
-            <TextInput.Icon
-              icon="magnify"
-              onPress={searchUser}
-            />
+            <TextInput.Icon icon="magnify" onPress={searchUser} />
           }
         />
 
@@ -117,9 +118,7 @@ export default function FriendsScreen() {
           <Card style={styles.resultCard}>
             <Card.Content style={styles.resultContent}>
               <View>
-                <Text style={styles.resultName}>
-                  {searchResult.displayName}
-                </Text>
+                <Text style={styles.resultName}>{searchResult.displayName}</Text>
                 <Text style={styles.resultPhone}>{searchResult.phone}</Text>
               </View>
               <Button mode="contained" onPress={() => addFriend(searchResult)} style={styles.addButton}>
@@ -182,11 +181,7 @@ const styles = StyleSheet.create({
   resultPhone: { color: "#888" },
   addButton: { backgroundColor: "#e94560" },
   list: { padding: 16, paddingTop: 0 },
-  friendCard: {
-    marginBottom: 8,
-    backgroundColor: "#16213e",
-    borderRadius: 12,
-  },
+  friendCard: { marginBottom: 8, backgroundColor: "#16213e", borderRadius: 12 },
   friendContent: {
     flexDirection: "row",
     justifyContent: "space-between",

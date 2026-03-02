@@ -13,9 +13,10 @@ export default function Index() {
     );
   }
 
-  if (!isAuthenticated) {
-    return <Redirect href="/auth/login" />;
+  // In demo mode, isAuthenticated is true (demo user), so this goes straight to home
+  if (isAuthenticated) {
+    return <Redirect href="/(tabs)/home" />;
   }
 
-  return <Redirect href="/(tabs)/home" />;
+  return <Redirect href="/auth/login" />;
 }

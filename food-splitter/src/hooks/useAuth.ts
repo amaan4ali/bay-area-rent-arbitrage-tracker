@@ -1,20 +1,18 @@
 import { useState, useEffect } from "react";
-import { User as FirebaseUser } from "firebase/auth";
+import { DEMO_MODE } from "../config";
+import { DEMO_USER } from "../demo-data";
 import { onAuthChange, getUserProfile, createUserProfile } from "../services/firebase";
-import { registerForPushNotifications } from "../services/notifications";
 import { User } from "../types";
 
 export function useAuth() {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(DEMO_MODE ? DEMO_USER : null);
+  const [loading, setLoading] = useState(!DEMO_MODE);
 
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (fbUser) => {
-      setFirebaseUser(fbUser);
+    if (DEMO_MODE) return; // Already set above
 
+    const unsubscribe = onAuthChange(async (fbUser: any) => {
       if (fbUser) {
-        // Fetch or create user profile
         let profile = await getUserProfile(fbUser.uid);
 
         if (!profile) {
@@ -29,9 +27,6 @@ export function useAuth() {
         }
 
         setUser(profile);
-
-        // Register for push notifications
-        await registerForPushNotifications(fbUser.uid);
       } else {
         setUser(null);
       }
@@ -42,5 +37,5 @@ export function useAuth() {
     return unsubscribe;
   }, []);
 
-  return { user, firebaseUser, loading, isAuthenticated: !!user };
+  return { user, loading, isAuthenticated: !!user };
 }

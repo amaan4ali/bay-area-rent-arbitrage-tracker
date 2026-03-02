@@ -2,12 +2,7 @@ import { useState } from "react";
 import { View, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { Text, TextInput, Button, Surface } from "react-native-paper";
 import { router } from "expo-router";
-import { auth } from "../../src/services/firebase";
-import {
-  signInWithCredential,
-  PhoneAuthProvider,
-  RecaptchaVerifier,
-} from "firebase/auth";
+import { DEMO_MODE } from "../../src/config";
 
 export default function LoginScreen() {
   const [phone, setPhone] = useState("");
@@ -17,11 +12,15 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
 
   const sendVerificationCode = async () => {
+    if (DEMO_MODE) {
+      // Demo mode: skip real SMS, go straight to code entry
+      setVerificationId("demo-verification");
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
-      // In production, use Firebase Phone Auth with reCAPTCHA
-      // For Expo, use expo-auth-session or a Cloud Function to send SMS
       const response = await fetch(
         `${process.env.EXPO_PUBLIC_API_URL}/sendVerificationCode`,
         {
@@ -41,10 +40,24 @@ export default function LoginScreen() {
 
   const verifyCode = async () => {
     if (!verificationId) return;
+
+    if (DEMO_MODE) {
+      // Demo mode: any code works
+      router.replace("/(tabs)/home");
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
+      const { PhoneAuthProvider, signInWithCredential } = await import("firebase/auth");
+      const { firebaseReady } = await import("../../src/services/firebase");
+      await firebaseReady;
+
       const credential = PhoneAuthProvider.credential(verificationId, code);
+      // In production, get the auth instance properly
+      const { getAuth } = await import("firebase/auth");
+      const auth = getAuth();
       await signInWithCredential(auth, credential);
       router.replace("/(tabs)/home");
     } catch (err) {
@@ -66,6 +79,16 @@ export default function LoginScreen() {
         <Text variant="bodyLarge" style={styles.subtitle}>
           Split bills. Pay instantly. No more IOUs.
         </Text>
+
+        {DEMO_MODE && (
+          <Button
+            mode="contained"
+            onPress={() => router.replace("/(tabs)/home")}
+            style={styles.demoButton}
+          >
+            Try Demo Mode
+          </Button>
+        )}
 
         <Surface style={styles.card}>
           {!verificationId ? (
@@ -133,48 +156,19 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#1a1a2e",
+  container: { flex: 1, backgroundColor: "#1a1a2e" },
+  content: { flex: 1, justifyContent: "center", padding: 24 },
+  title: { color: "#e94560", fontWeight: "bold", textAlign: "center", marginBottom: 8 },
+  subtitle: { color: "#888", textAlign: "center", marginBottom: 40 },
+  demoButton: {
+    backgroundColor: "#0f3460",
+    marginBottom: 20,
+    paddingVertical: 4,
   },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 24,
-  },
-  title: {
-    color: "#e94560",
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#888",
-    textAlign: "center",
-    marginBottom: 40,
-  },
-  card: {
-    padding: 24,
-    borderRadius: 16,
-    backgroundColor: "#16213e",
-  },
-  cardTitle: {
-    color: "#fff",
-    marginBottom: 16,
-  },
-  input: {
-    marginBottom: 16,
-  },
-  button: {
-    marginTop: 8,
-    backgroundColor: "#e94560",
-  },
-  backButton: {
-    marginTop: 8,
-  },
-  error: {
-    color: "#ff6b6b",
-    marginTop: 12,
-    textAlign: "center",
-  },
+  card: { padding: 24, borderRadius: 16, backgroundColor: "#16213e" },
+  cardTitle: { color: "#fff", marginBottom: 16 },
+  input: { marginBottom: 16 },
+  button: { marginTop: 8, backgroundColor: "#e94560" },
+  backButton: { marginTop: 8 },
+  error: { color: "#ff6b6b", marginTop: 12, textAlign: "center" },
 });
